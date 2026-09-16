@@ -4,11 +4,12 @@ import type { Database } from "./database.types";
 
 /**
  * Cliente Supabase para uso em Server Components e Server Actions. Usa
- * apenas a anon key (pública, protegida por RLS) — nunca a service_role key.
- * Operações que exigem privilégio de servidor (ex.: excluir credenciais de
- * auth.users na etapa de exclusão de conta) terão seu próprio cliente
- * server-only com a service_role key quando essa funcionalidade for
- * implementada — nunca reaproveitar este client para isso.
+ * apenas a publishable key (pública, protegida por RLS — substitui a antiga
+ * anon key) — nunca a secret/service_role key. Operações que exigem
+ * privilégio de servidor (ex.: excluir credenciais de auth.users na etapa de
+ * exclusão de conta) terão seu próprio cliente server-only com uma secret key
+ * quando essa funcionalidade for implementada — nunca reaproveitar este
+ * client para isso.
  *
  * `database.types.ts` é gerado a partir do schema remoto via
  * `npx supabase gen types typescript --linked` — não editar manualmente.
@@ -18,7 +19,7 @@ export async function createClient() {
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {

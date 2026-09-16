@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bell, Menu, Search } from "lucide-react";
 
-import { DEMO_USER } from "@/lib/demo-data";
+import { logoutAction } from "@/lib/actions/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +18,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import type { AppShellUser } from "@/components/layout/app-shell";
 
-export function AppHeader() {
+export function AppHeader({
+  user,
+  showAdmin,
+}: {
+  user: AppShellUser;
+  showAdmin: boolean;
+}) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
@@ -35,7 +43,7 @@ export function AppHeader() {
         </Button>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Navegação principal</SheetTitle>
-          <AppSidebar />
+          <AppSidebar showAdmin={showAdmin} />
         </SheetContent>
       </Sheet>
 
@@ -74,15 +82,15 @@ export function AppHeader() {
             >
               <Avatar className="size-8">
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {DEMO_USER.iniciais}
+                  {user.iniciais}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden leading-tight sm:block">
                 <span className="block text-sm font-medium">
-                  {DEMO_USER.nome}
+                  {user.nome}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  {DEMO_USER.papel}
+                  {user.subtitulo}
                 </span>
               </span>
             </button>
@@ -90,10 +98,18 @@ export function AppHeader() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Preferências</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/perfil">Perfil</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">Sair</DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => {
+                logoutAction();
+              }}
+            >
+              Sair
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
