@@ -98,5 +98,31 @@ Todas as colunas de data/hora são `timestamptz`, armazenadas em UTC pelo Postgr
   6. `..._reservations.sql` — tabela, exclusion constraint anti-sobreposição, trigger de validação de unidade, RLS.
   7. `..._reservation_functions.sql` — `create_reservation()` e `cancel_reservation()`.
 - `supabase/seed.sql`: popula os 9 recursos iniciais e as 42 `resource_units` correspondentes (ver seção 9 de `contexto-projeto.md`). Todo `INSERT` usa `ON CONFLICT ... DO NOTHING`, então o arquivo é idempotente e seguro para reexecutar em `supabase db reset`. Não cria usuários em `auth.users` nem senhas — dados de demonstração de usuários ficam para a etapa de autenticação.
-- Fluxo local esperado (requer Docker/Podman, ver limitação registrada no relatório do Prompt 2): `npx supabase start` → `npx supabase db reset` (aplica migrations + seed do zero) → `npx supabase gen types typescript --local > lib/supabase/database.types.ts`.
-- Fluxo remoto esperado (requer login prévio via `npx supabase login`): `npx supabase link --project-ref <ref>` → `npx supabase db push` (aplica migrations) → aplicar seed manualmente se apropriado para o ambiente de dev/acadêmico → `npx supabase gen types typescript --linked > lib/supabase/database.types.ts`.
+- Fluxo local (requer Docker/Podman — não disponível no ambiente de desenvolvimento atual, ver relatório do Prompt 2): `npx supabase start` → `npx supabase db reset` (aplica migrations + seed do zero) → `npx supabase gen types typescript --local > lib/supabase/database.types.ts`.
+- Fluxo remoto — **já executado e validado** contra o projeto Cloud `Senac ResourceHub` (ref `lxyuxggqeynqupiqojnn`, região `sa-east-1`, plano Free): `npx supabase login` → `npx supabase link --project-ref lxyuxggqeynqupiqojnn` → `npx supabase db push --dry-run` (conferência) → `npx supabase db push` (aplica as 7 migrations) → `npx supabase db push --include-seed` (aplica `seed.sql`; note-se que `db push` só roda o seed com essa flag explícita, e nunca via `db reset --linked`, que apagaria o schema) → `npx supabase gen types typescript --linked > lib/supabase/database.types.ts`.
+
+### Validação executada no banco remoto (Prompt 2.1)
+
+Sem Docker disponível, a validação de integridade foi feita diretamente contra o Postgres remoto do projeto, via `npx supabase db query --linked`, usando blocos `DO $$ ... $$` que criam dados de teste, verificam o comportamento e apagam os próprios dados ao final (nenhum teste deixou resíduo — confirmado por contagem final: `profiles=0`, `reservations=0`, `resources=9`, `resource_units=42`, coerente com o catálogo semente):
+
+| Verificação | Resultado |
+|---|---|
+| 9 resources, 42 resource_units no total | ✅ |
+| Contagem de unidades por recurso (1, 1, 12, 3, 2, 3, 10, 10, 0) | ✅ todas batem |
+| Oficina de Fabricação e Prototipagem com 0 `resource_units` | ✅ |
+| Todas as 42 unidades nascem com `status = 'disponivel'` | ✅ |
+| Nome do recurso é exatamente "Bambu Lab A1" (nunca "Combo") | ✅ |
+| Oficina com 6 orientações de segurança cadastradas | ✅ |
+| RLS habilitada nas 4 tabelas (`profiles`, `resources`, `resource_units`, `reservations`) | ✅ |
+| `reservations_no_overlap`: duas reservas sobrepostas na mesma unidade → a segunda é rejeitada (`exclusion_violation`) | ✅ |
+| `reservations_no_overlap`: reservas encostadas (10–12h e 12–14h) na mesma unidade → ambas aceitas | ✅ |
+| `resource_units_prevent_shared_space`: inserir uma `resource_unit` para a Oficina → rejeitado | ✅ |
+| `reservations_validate_unit_assignment`: reserva de recurso normal sem `resource_unit_id` → rejeitada | ✅ |
+| `reservations_validate_unit_assignment`: reserva da Oficina com `resource_unit_id` preenchido → rejeitada | ✅ |
+| `resources_shared_space_consistente`: `tipo='laboratorio'` com `is_shared_space=true` → rejeitado | ✅ |
+| `resources_shared_space_consistente`: `tipo='espaco_compartilhado'` com `is_shared_space=false` → rejeitado | ✅ |
+| `protect_profile_privileged_fields`: `UPDATE role='admin'` fora de um contexto de admin (`is_admin()` falso) → `role` permanece `user` | ✅ |
+
+Os RPCs `create_reservation()`/`cancel_reservation()` não puderam ser exercitados de ponta a ponta nesta etapa porque dependem de `auth.uid()` (contexto de um usuário autenticado real via PostgREST/Supabase Auth), inexistente antes da etapa de autenticação — a lógica de atribuição de unidade que eles encapsulam (a exclusion constraint e o `FOR UPDATE SKIP LOCKED`) foi validada diretamente, como acima. Os RPCs serão exercitados de ponta a ponta assim que houver um usuário autenticado real (Prompt de autenticação).
+
+Tipos TypeScript gerados a partir do schema remoto com sucesso em `lib/supabase/database.types.ts`, incluindo as 4 tabelas, os 5 enums e as assinaturas de `create_reservation`, `cancel_reservation` e `is_admin`. `lib/supabase/client.ts` e `server.ts` já usam `createBrowserClient<Database>`/`createServerClient<Database>`.
