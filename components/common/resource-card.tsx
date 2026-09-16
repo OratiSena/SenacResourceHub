@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Boxes } from "lucide-react";
+import { Boxes, MapPin } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -12,9 +12,22 @@ interface ResourceCardProps {
   category: string;
   name: string;
   description?: string;
+  location?: string;
   totalUnits?: number;
   availableUnits?: number;
+  /**
+   * Palavra usada depois de "X de Y" (ex.: "operacionais", "disponíveis").
+   * Importante: até existir checagem de horário real (Prompt 7), usar um
+   * termo que não implique "livre agora" — ver Prompt 5, seção 2.
+   */
+  unitsLabel?: string;
   status: ResourceStatusValue;
+  /**
+   * Recursos do tipo espaço compartilhado (ex.: a Oficina) não têm
+   * resource_units — em vez da contagem de unidades, mostra uma nota fixa
+   * explicando o funcionamento (Prompt 5, seção 3).
+   */
+  sharedSpaceNote?: string;
   /**
    * Área de mídia do recurso. Aceita qualquer ReactNode — uma <img>, um
    * carrossel, ou futuramente um <Canvas> do React Three Fiber (Prompt 6).
@@ -30,9 +43,12 @@ export function ResourceCard({
   category,
   name,
   description,
+  location,
   totalUnits,
   availableUnits,
+  unitsLabel = "disponíveis",
   status,
+  sharedSpaceNote,
   media,
   action,
   className,
@@ -66,10 +82,21 @@ export function ResourceCard({
           </p>
         ) : null}
 
-        {hasUnitInfo ? (
+        {location ? (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="size-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{location}</span>
+          </p>
+        ) : null}
+
+        {sharedSpaceNote ? (
+          <p className="mt-1 text-xs font-medium text-info">
+            {sharedSpaceNote}
+          </p>
+        ) : hasUnitInfo ? (
           <div className="mt-1 space-y-1">
             <p className="text-xs text-muted-foreground">
-              {availableUnits} de {totalUnits} disponíveis
+              {availableUnits} de {totalUnits} {unitsLabel}
             </p>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div

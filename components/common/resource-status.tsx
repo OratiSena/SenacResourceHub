@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Clock, Wrench, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock, Users, Wrench, XCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,8 @@ export type ResourceStatusValue =
   | "manutencao"
   | "inativo"
   | "ativo"
-  | "cancelado";
+  | "cancelado"
+  | "compartilhado";
 
 /**
  * Cor + ícone + texto para cada status: nunca depender só da cor para
@@ -48,6 +49,11 @@ const STATUS_CONFIG: Record<
     label: "Cancelada",
     icon: XCircle,
     className: "border-destructive/20 bg-destructive/10 text-destructive",
+  },
+  compartilhado: {
+    label: "Uso compartilhado",
+    icon: Users,
+    className: "border-info/20 bg-info/10 text-info",
   },
 };
 
