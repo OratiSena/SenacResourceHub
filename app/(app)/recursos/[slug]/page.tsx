@@ -66,7 +66,11 @@ export default async function ResourceDetailPage({
           {has3D ? (
             <Resource3DViewerLoader slug={resource.slug} label={resource.nome} />
           ) : (
-            <ResourceMediaPlaceholder tipo={resource.tipo} />
+            <ResourceMediaPlaceholder
+              tipo={resource.tipo}
+              slug={resource.slug}
+              label={resource.nome}
+            />
           )}
         </div>
 

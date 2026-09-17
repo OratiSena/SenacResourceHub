@@ -116,7 +116,13 @@ export default async function HomePage() {
               sharedSpaceNote={
                 resource.isSharedSpace ? SHARED_SPACE_NOTE : undefined
               }
-              media={<ResourceMediaPlaceholder tipo={resource.tipo} />}
+              media={
+                <ResourceMediaPlaceholder
+                  tipo={resource.tipo}
+                  slug={resource.slug}
+                  label={resource.nome}
+                />
+              }
               action={
                 <Button asChild size="sm" variant="outline" className="w-full">
                   <Link href={`/recursos/${resource.slug}`}>
