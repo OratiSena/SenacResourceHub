@@ -3,6 +3,8 @@ import { Boxes, CalendarDays, CheckCircle2, Compass, Tags } from "lucide-react";
 
 import { getCurrentProfile } from "@/lib/auth/current-profile";
 import { getActiveResources } from "@/lib/data/resources";
+import { getNextReservation } from "@/lib/data/reservations";
+import { formatDataLocal, formatHoraLocal } from "@/lib/reservations/format";
 import {
   getResourceCardStatus,
   SHARED_SPACE_NOTE,
@@ -32,9 +34,10 @@ function getSaudacao() {
  * espaço para elas mostra um empty state honesto em vez de dados fictícios.
  */
 export default async function HomePage() {
-  const [profile, resources] = await Promise.all([
+  const [profile, resources, nextReservation] = await Promise.all([
     getCurrentProfile(),
     getActiveResources(),
+    getNextReservation(),
   ]);
 
   const primeiroNome = profile?.nome.split(" ")[0] ?? "";
@@ -136,16 +139,38 @@ export default async function HomePage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-navy">Minhas reservas</h2>
-        <EmptyState
-          title="Você ainda não possui reservas."
-          description="Explore o catálogo e escolha um recurso para começar."
-          action={
-            <Button asChild size="sm">
-              <Link href="/recursos">Explorar recursos</Link>
+        <h2 className="text-lg font-semibold text-navy">Próxima reserva</h2>
+        {nextReservation ? (
+          <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-semibold text-navy">
+                {nextReservation.resourceNome}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {formatDataLocal(nextReservation.dataHoraInicio)} ·{" "}
+                {formatHoraLocal(nextReservation.dataHoraInicio)} –{" "}
+                {formatHoraLocal(nextReservation.dataHoraFim)}
+                {!nextReservation.isSharedSpace && nextReservation.unitCodigo
+                  ? ` · Unidade ${nextReservation.unitCodigo}`
+                  : ""}
+              </p>
+              <p className="text-sm text-navy">{nextReservation.finalidade}</p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/minhas-reservas">Ver todas</Link>
             </Button>
-          }
-        />
+          </div>
+        ) : (
+          <EmptyState
+            title="Você ainda não possui reservas."
+            description="Explore o catálogo e escolha um recurso para começar."
+            action={
+              <Button asChild size="sm">
+                <Link href="/recursos">Explorar recursos</Link>
+              </Button>
+            }
+          />
+        )}
       </section>
     </div>
   );

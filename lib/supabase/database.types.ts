@@ -315,6 +315,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_my_account: { Args: never; Returns: undefined }
+      get_resource_busy_intervals: {
+        Args: { p_end: string; p_resource_id: string; p_start: string }
+        Returns: {
+          data_hora_fim: string
+          data_hora_inicio: string
+          resource_unit_id: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
