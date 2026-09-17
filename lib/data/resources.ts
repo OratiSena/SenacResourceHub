@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ResourceType } from "@/lib/resources/resource-types";
+import type { Database } from "@/lib/supabase/database.types";
+
+export type UnitStatus = Database["public"]["Enums"]["unit_status"];
 
 export interface ResourceUnitsSummary {
   /** Total de unidades físicas cadastradas para o recurso. */
@@ -69,32 +72,71 @@ export async function getActiveResources(): Promise<ResourceListItem[]> {
   }));
 }
 
-export interface ResourceSummary {
+export interface ResourceUnitDetail {
+  id: string;
+  codigo: string;
+  status: UnitStatus;
+}
+
+export interface ResourceDetail {
+  id: string;
   slug: string;
   nome: string;
+  tipo: ResourceType;
+  descricao: string | null;
+  local: string | null;
+  isSharedSpace: boolean;
+  modelo3dUrl: string | null;
+  imagens: string[];
+  horarioAbertura: string | null;
+  horarioFechamento: string | null;
+  duracaoMaximaMinutos: number | null;
+  antecedenciaMinimaMinutos: number;
+  orientacoesSeguranca: string[] | null;
+  units: ResourceUnitDetail[];
 }
 
 /**
- * Usado só pelo placeholder de /recursos/[slug] nesta etapa — a
- * implementação completa (Prompt 6) provavelmente vai querer mais campos.
- * RLS decide sozinha se o slug existe E está visível para quem está
- * consultando; `null` cobre os dois casos (não existe / existe mas está
- * oculto), sem distinguir um do outro para quem não pode ver.
+ * Dados completos para a página de detalhe (Prompt 6). RLS decide sozinha se
+ * o slug existe E está visível para quem está consultando (usuário comum só
+ * vê `ativo = true`) — `null` cobre os dois casos (não existe / existe mas
+ * está oculto), sem distinguir um do outro para quem não pode ver.
  */
-export async function getResourceSummaryBySlug(
+export async function getResourceDetailBySlug(
   slug: string,
-): Promise<ResourceSummary | null> {
+): Promise<ResourceDetail | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("resources")
-    .select("slug, nome")
+    .select(
+      "id, slug, nome, tipo, descricao, local, is_shared_space, modelo_3d_url, imagens, horario_abertura, horario_fechamento, duracao_maxima_minutos, antecedencia_minima_minutos, orientacoes_seguranca, resource_units(id, codigo, status)",
+    )
     .eq("slug", slug)
     .maybeSingle();
 
   if (error) {
     throw new Error("Não foi possível carregar o recurso.");
   }
+  if (!data) return null;
 
-  return data;
+  return {
+    id: data.id,
+    slug: data.slug,
+    nome: data.nome,
+    tipo: data.tipo,
+    descricao: data.descricao,
+    local: data.local,
+    isSharedSpace: data.is_shared_space,
+    modelo3dUrl: data.modelo_3d_url,
+    imagens: data.imagens,
+    horarioAbertura: data.horario_abertura,
+    horarioFechamento: data.horario_fechamento,
+    duracaoMaximaMinutos: data.duracao_maxima_minutos,
+    antecedenciaMinimaMinutos: data.antecedencia_minima_minutos,
+    orientacoesSeguranca: data.orientacoes_seguranca,
+    units: [...(data.resource_units ?? [])].sort((a, b) =>
+      a.codigo.localeCompare(b.codigo),
+    ),
+  };
 }
