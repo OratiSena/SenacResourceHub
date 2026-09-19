@@ -34,9 +34,58 @@ function Svg({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Caixa isométrica simples (projeção dimétrica 2:1) — usada pelas cenas de
+ * ambiente (laboratórios, Oficina) para compor bancadas/equipamentos em
+ * profundidade, em vez de um único ícone plano. `(x, y)` é o canto
+ * inferior-frontal da caixa; `w` cresce para a direita, `d` para trás-esquerda,
+ * `h` para cima.
+ */
+function IsoBox({
+  x,
+  y,
+  w,
+  d,
+  h,
+  topColor,
+  leftColor,
+  rightColor,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+  h: number;
+  topColor: string;
+  leftColor: string;
+  rightColor: string;
+}) {
+  const frontBottom: [number, number] = [x, y];
+  const rightBottom: [number, number] = [x + w, y - w / 2];
+  const backBottom: [number, number] = [x + w - d, y - w / 2 - d / 2];
+  const leftBottom: [number, number] = [x - d, y - d / 2];
+
+  const shift = ([px, py]: [number, number]): [number, number] => [px, py - h];
+  const frontTop = shift(frontBottom);
+  const rightTop = shift(rightBottom);
+  const backTop = shift(backBottom);
+  const leftTop = shift(leftBottom);
+
+  const pts = (arr: [number, number][]) => arr.map((p) => p.join(",")).join(" ");
+
+  return (
+    <g>
+      <polygon points={pts([frontBottom, leftBottom, leftTop, frontTop])} fill={leftColor} />
+      <polygon points={pts([frontBottom, rightBottom, rightTop, frontTop])} fill={rightColor} />
+      <polygon points={pts([frontTop, rightTop, backTop, leftTop])} fill={topColor} />
+    </g>
+  );
+}
+
 function BambuLabA1Illustration() {
   return (
     <Svg>
+      <ellipse cx="100" cy="122" rx="58" ry="8" fill={NAVY} opacity="0.08" />
       <rect x="50" y="115" width="100" height="10" rx="3" fill={GRAPHITE} />
       <rect x="65" y="35" width="70" height="80" rx="4" fill={LIGHT} />
       <rect x="65" y="35" width="70" height="10" rx="3" fill={MUTED} />
@@ -54,6 +103,7 @@ function BambuLabA1Illustration() {
 function FlashforgeHunterIllustration() {
   return (
     <Svg>
+      <ellipse cx="100" cy="118" rx="52" ry="7" fill={NAVY} opacity="0.08" />
       <rect x="55" y="25" width="90" height="95" rx="6" fill={GRAPHITE} />
       <rect x="55" y="25" width="90" height="8" rx="4" fill={NAVY} />
       <rect
@@ -76,6 +126,7 @@ function FlashforgeHunterIllustration() {
 function Sethi3DIllustration() {
   return (
     <Svg>
+      <ellipse cx="100" cy="126" rx="58" ry="7" fill={NAVY} opacity="0.08" />
       <rect x="45" y="120" width="110" height="8" rx="3" fill={GRAPHITE} />
       <rect
         x="50"
@@ -161,52 +212,67 @@ function KitEletronicaIllustration() {
   );
 }
 
+const WOOD = "#c9b48a";
+const WOOD_DARK = "#a3895c";
+const WOOD_MED = "#b9a077";
+const METAL = "#9ea4ad";
+const METAL_DARK = "#7a828c";
+const METAL_LIGHT = "#c7cad1";
+
+/** Sombra elíptica no "chão" da cena isométrica, para dar apoio visual. */
+function IsoFloorShadow({ cx, cy, rx, ry }: { cx: number; cy: number; rx: number; ry: number }) {
+  return <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill={NAVY} opacity="0.08" />;
+}
+
 function LaboratorioHardwareIllustration() {
   return (
     <Svg>
-      <rect x="20" y="108" width="160" height="8" rx="2" fill={GRAPHITE} />
-      <rect x="35" y="52" width="22" height="56" rx="3" fill={LIGHT} />
-      <circle cx="46" cy="60" r="2.5" fill={SUCCESS} />
-      <rect x="68" y="38" width="62" height="46" rx="4" fill={GRAPHITE} />
-      <rect x="73" y="43" width="52" height="34" rx="2" fill={BLUE} opacity="0.85" />
-      <rect x="90" y="86" width="18" height="14" rx="2" fill={GRAPHITE} />
-      <rect x="78" y="100" width="42" height="6" rx="2" fill={MUTED} />
-      <rect x="118" y="98" width="45" height="10" rx="2" fill={LIGHT} />
+      <IsoFloorShadow cx={112} cy={124} rx={66} ry={14} />
+      {/* Bancada */}
+      <IsoBox x={100} y={122} w={64} h={9} d={38} topColor={WOOD} leftColor={WOOD_DARK} rightColor={WOOD_MED} />
+      {/* Torre do computador ao lado da bancada */}
+      <IsoBox x={58} y={120} w={16} h={28} d={16} topColor={METAL_LIGHT} leftColor={METAL_DARK} rightColor={METAL} />
+      <circle cx="62" cy="104" r="1.6" fill={SUCCESS} />
+      {/* Monitor sobre a bancada */}
+      <IsoBox x={128} y={100} w={26} h={20} d={3} topColor={GRAPHITE} leftColor={GRAPHITE} rightColor={BLUE} />
+      <IsoBox x={136} y={100} w={6} h={6} d={6} topColor={METAL} leftColor={METAL_DARK} rightColor={METAL} />
+      {/* Teclado */}
+      <IsoBox x={96} y={109} w={26} h={2.5} d={10} topColor={LIGHTER} leftColor={LIGHT} rightColor={MUTED} />
+      {/* Multímetro pequeno */}
+      <IsoBox x={140} y={112} w={10} h={3} d={8} topColor={ORANGE} leftColor="#c96a1e" rightColor="#d97b2a" />
     </Svg>
   );
 }
 
 function LaboratorioRedesIllustration() {
-  const ports1 = Array.from({ length: 8 }, (_, i) => 45 + i * 12);
-  const ports2 = Array.from({ length: 8 }, (_, i) => 45 + i * 12);
   return (
     <Svg>
-      <rect x="35" y="42" width="130" height="24" rx="3" fill={GRAPHITE} />
-      {ports1.map((x, i) => (
-        <rect
-          key={x}
-          x={x}
-          y="50"
-          width="7"
-          height="9"
-          rx="1"
-          fill={i % 3 === 0 ? SUCCESS : LIGHT}
-        />
+      <IsoFloorShadow cx={110} cy={126} rx={70} ry={13} />
+      {/* Bancada */}
+      <IsoBox x={130} y={124} w={54} h={8} d={30} topColor={WOOD} leftColor={WOOD_DARK} rightColor={WOOD_MED} />
+      {/* Notebook sobre a bancada */}
+      <IsoBox x={148} y={112} w={18} h={1.5} d={12} topColor={METAL_LIGHT} leftColor={METAL} rightColor={METAL_LIGHT} />
+      <IsoBox x={148} y={110.5} w={18} h={11} d={1.2} topColor={GRAPHITE} leftColor={GRAPHITE} rightColor={BLUE} />
+      {/* Rack de rede */}
+      <IsoBox x={56} y={122} w={26} h={62} d={18} topColor="#2c2f34" leftColor="#17181b" rightColor="#1f2124" />
+      {/* Unidades do rack (patch panel + switches) com portas coloridas */}
+      {[0, 1, 2].map((row) => (
+        <g key={row}>
+          <rect x={38 - row * 9} y={82 - row * 15} width="16" height="6" rx="1" fill={row === 0 ? NAVY : GRAPHITE} />
+          {Array.from({ length: 5 }, (_, i) => (
+            <rect
+              key={i}
+              x={39 - row * 9 + i * 3}
+              y={83 - row * 15}
+              width="1.6"
+              height="3.4"
+              fill={i % 2 === 0 ? SUCCESS : (row === 0 ? BLUE : ORANGE)}
+            />
+          ))}
+        </g>
       ))}
-      <rect x="35" y="72" width="130" height="24" rx="3" fill={NAVY} />
-      {ports2.map((x, i) => (
-        <rect
-          key={x}
-          x={x}
-          y="80"
-          width="7"
-          height="9"
-          rx="1"
-          fill={i % 4 === 0 ? BLUE : LIGHT}
-        />
-      ))}
-      <path d="M60,96 Q60,112 75,116" stroke={GRAPHITE} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <path d="M100,96 Q100,112 115,116" stroke={BLUE} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <path d="M55,95 Q75,102 96,113" stroke={SUCCESS} strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M50,110 Q80,118 100,120" stroke={ORANGE} strokeWidth="2" fill="none" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -214,38 +280,26 @@ function LaboratorioRedesIllustration() {
 function OficinaIllustration() {
   return (
     <Svg>
-      <rect
-        x="30"
-        y="20"
-        width="140"
-        height="100"
-        rx="6"
-        fill="#FFFFFF"
-        stroke={MUTED}
-        strokeWidth="1.5"
-      />
-      {[45, 65, 85, 105, 125, 145].flatMap((x) =>
-        [35, 55, 75, 95, 115].map((y) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" fill={MUTED} opacity="0.6" />
-        )),
-      )}
-      <g transform="rotate(-25 90 65)">
-        <rect x="55" y="60" width="70" height="10" rx="5" fill={GRAPHITE} />
-        <circle cx="50" cy="65" r="12" fill={GRAPHITE} />
-        <circle cx="50" cy="65" r="6" fill="#FFFFFF" />
-        <circle cx="130" cy="65" r="10" fill={GRAPHITE} />
-        <circle cx="130" cy="65" r="5" fill="#FFFFFF" />
+      <IsoFloorShadow cx={108} cy={128} rx={72} ry={13} />
+      {/* Bancada robusta */}
+      <IsoBox x={130} y={126} w={58} h={10} d={34} topColor={WOOD} leftColor={WOOD_DARK} rightColor={WOOD_MED} />
+      {/* Máquina de bancada (tipo furadeira) */}
+      <IsoBox x={150} y={112} w={16} h={8} d={14} topColor={METAL_LIGHT} leftColor={METAL_DARK} rightColor={METAL} />
+      <rect x="148" y="70" width="3" height="38" fill={METAL} />
+      <IsoBox x={158} y={80} w={14} h={5} d={8} topColor="#d24f4f" leftColor="#a83636" rightColor="#c94040" />
+      {/* Morsa na bancada */}
+      <IsoBox x={110} y={116} w={14} h={7} d={10} topColor={METAL_LIGHT} leftColor={METAL_DARK} rightColor={METAL} />
+      {/* Painel de ferramentas na parede */}
+      <rect x="30" y="35" width="46" height="34" rx="3" fill="#e7e5e0" stroke={MUTED} strokeWidth="1" />
+      {[40, 52, 64].map((x, i) => (
+        <rect key={x} x={x} y={44 + (i % 2) * 6} width="3" height="18" rx="1.5" fill={GRAPHITE} transform={`rotate(${-12 + i * 8} ${x} 50)`} />
+      ))}
+      {/* Sinalização de segurança discreta */}
+      <g transform="translate(30 90)">
+        <polygon points="10,0 20,17 0,17" fill={ORANGE} stroke={GRAPHITE} strokeWidth="1" />
+        <rect x="9" y="6" width="2" height="6" fill={GRAPHITE} />
+        <circle cx="10" cy="14" r="1" fill={GRAPHITE} />
       </g>
-      <circle cx="130" cy="85" r="16" fill={ORANGE} />
-      <circle cx="130" cy="85" r="7" fill={LIGHT} />
-      <line x1="130" y1="61" x2="130" y2="69" stroke={ORANGE} strokeWidth="3" />
-      <line x1="130" y1="101" x2="130" y2="109" stroke={ORANGE} strokeWidth="3" />
-      <line x1="106" y1="85" x2="114" y2="85" stroke={ORANGE} strokeWidth="3" />
-      <line x1="146" y1="85" x2="154" y2="85" stroke={ORANGE} strokeWidth="3" />
-      <line x1="114.7" y1="69.7" x2="120.4" y2="75.4" stroke={ORANGE} strokeWidth="3" />
-      <line x1="139.6" y1="94.6" x2="145.3" y2="100.3" stroke={ORANGE} strokeWidth="3" />
-      <line x1="145.3" y1="69.7" x2="139.6" y2="75.4" stroke={ORANGE} strokeWidth="3" />
-      <line x1="120.4" y1="94.6" x2="114.7" y2="100.3" stroke={ORANGE} strokeWidth="3" />
     </Svg>
   );
 }

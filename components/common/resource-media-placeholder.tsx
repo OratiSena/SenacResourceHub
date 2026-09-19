@@ -1,30 +1,47 @@
+import Image from "next/image";
+
 import { RESOURCE_ILLUSTRATIONS } from "@/components/common/resource-illustrations";
+import { RESOURCE_PHOTOS } from "@/lib/resources/resource-photos";
 import { RESOURCE_TYPE_ICONS, type ResourceType } from "@/lib/resources/resource-types";
 
 interface ResourceMediaPlaceholderProps {
   tipo: ResourceType;
-  /** Slug do recurso — usado para escolher a ilustração específica. */
+  /** Slug do recurso — usado para escolher a foto/ilustração específica. */
   slug?: string;
   /** Nome do recurso, para o aria-label. */
   label?: string;
 }
 
 /**
- * Mídia usada enquanto o recurso não tem foto cadastrada (todo o catálogo,
- * nesta etapa — `resources.imagens` está vazio para os 9 recursos semente).
- * Prioriza uma ilustração própria por recurso (Prompt 6.1); se o slug não
- * tiver uma cadastrada em RESOURCE_ILLUSTRATIONS, cai no ícone genérico por
- * tipo (Prompt 5) — esse é o fallback visual caso um recurso novo ainda não
- * tenha ilustração própria. Substituído por imagem real ou pelo preview 3D
- * (Prompt 6) quando existirem.
+ * Mídia estática dos cards (Home/Recursos) e fallback da página de detalhe
+ * quando o recurso não tem modelo 3D. Prioridade: (1) foto real licenciada
+ * em RESOURCE_PHOTOS, quando existir uma fonte segura (ver
+ * lib/resources/resource-photos.ts); (2) ilustração SVG própria por recurso
+ * (RESOURCE_ILLUSTRATIONS); (3) ícone genérico por tipo. Nunca um
+ * `<Canvas>` — 3D só existe na página de detalhe (Prompt 6.2).
  */
 export function ResourceMediaPlaceholder({
   tipo,
   slug,
   label,
 }: ResourceMediaPlaceholderProps) {
+  const photo = slug ? RESOURCE_PHOTOS[slug] : undefined;
   const Illustration = slug ? RESOURCE_ILLUSTRATIONS[slug] : undefined;
   const Icon = RESOURCE_TYPE_ICONS[tipo];
+
+  if (photo) {
+    return (
+      <div className="relative size-full bg-muted">
+        <Image
+          src={photo.src}
+          alt={label ? `Foto de ${label}` : photo.alt}
+          fill
+          sizes="(min-width: 1024px) 25vw, 50vw"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

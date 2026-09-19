@@ -16,27 +16,29 @@ interface Resource3DViewerProps {
 /**
  * Cena 3D de verdade — só é importada no navegador (ver
  * resource-3d-viewer-loader.tsx, que faz o dynamic import com ssr:false).
- * Câmera, luzes e OrbitControls ficam aqui; o modelo em si vem do registro
- * por slug, para não precisar tocar neste arquivo ao adicionar outro
- * recurso 3D depois.
+ * Câmera, luzes e OrbitControls ficam aqui; o modelo em si e o enquadramento
+ * inicial de câmera vêm do registro por slug (`RESOURCE_3D_MODELS`), para
+ * não precisar tocar neste arquivo ao adicionar outro recurso 3D depois.
  */
 export function Resource3DViewer({ slug, label }: Resource3DViewerProps) {
-  const Model = RESOURCE_3D_MODELS[slug];
+  const entry = RESOURCE_3D_MODELS[slug];
 
-  if (!Model) {
+  if (!entry) {
     return <Viewer3DFallback label={label} reason="erro" />;
   }
+
+  const { Model, camera } = entry;
 
   return (
     <div
       className="relative size-full"
       role="img"
-      aria-label={`Visualização 3D interativa de ${label}. Arraste para girar, use a roda do mouse para aproximar.`}
+      aria-label={`Visualização 3D interativa de ${label}. Arraste para girar, use a roda do mouse para ampliar.`}
     >
       <ModelErrorBoundary fallback={<Viewer3DFallback label={label} reason="erro" />}>
         <Canvas
           shadows
-          camera={{ position: [2.3, 1.35, 2.7], fov: 38 }}
+          camera={{ position: camera.position, fov: 38 }}
           dpr={[1, 1.5]}
           className="bg-gradient-to-br from-primary/10 via-background to-navy/5"
           fallback={<Viewer3DFallback label={label} reason="unsupported" />}
@@ -55,23 +57,28 @@ export function Resource3DViewer({ slug, label }: Resource3DViewerProps) {
             />
           </Suspense>
           <OrbitControls
-            target={[0, 0.55, -0.1]}
+            target={camera.target}
             enablePan={false}
             enableDamping
             dampingFactor={0.08}
             autoRotate
             autoRotateSpeed={0.6}
-            minDistance={2}
-            maxDistance={4.5}
+            minDistance={camera.minDistance}
+            maxDistance={camera.maxDistance}
             minPolarAngle={Math.PI / 6}
             maxPolarAngle={Math.PI / 2.1}
           />
         </Canvas>
       </ModelErrorBoundary>
+      <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+        <span className="rounded-full bg-navy/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+          Arraste para girar · role para ampliar
+        </span>
+      </div>
       <span className="sr-only">
-        {label}: representação 3D ilustrativa gerada com formas simples, não é
-        o modelo CAD oficial do fabricante. Todas as informações deste
-        recurso também estão disponíveis em texto nesta página.
+        {label}: representação 3D ilustrativa gerada com formas simples, não
+        reproduz fielmente o objeto ou ambiente real. Todas as informações
+        deste recurso também estão disponíveis em texto nesta página.
       </span>
     </div>
   );

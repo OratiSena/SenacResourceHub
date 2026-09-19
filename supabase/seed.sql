@@ -18,7 +18,7 @@ insert into public.resources (
   'laboratorio',
   'Estações completas para desenvolvimento e testes de hardware.',
   'Senac — Departamento de Inovação',
-  240, 120, '08:00', '22:00'
+  240, 120, '08:00', '22:45'
 )
 on conflict (slug) do nothing;
 
@@ -39,7 +39,7 @@ insert into public.resources (
   'laboratorio',
   'Infraestrutura para prática de redes e configuração de sistemas.',
   'Senac — Departamento de Inovação',
-  240, 120, '08:00', '22:00'
+  240, 120, '08:00', '22:45'
 )
 on conflict (slug) do nothing;
 
@@ -60,7 +60,7 @@ insert into public.resources (
   'equipamento',
   'Equipamento de medição para análise de sinais elétricos.',
   'Senac — Laboratório de Eletrônica',
-  240, 60, '08:00', '22:00'
+  240, 60, '08:00', '22:45'
 )
 on conflict (slug) do nothing;
 
@@ -88,7 +88,7 @@ insert into public.resources (
   'Impressora 3D FDM de alta velocidade com sistema AMS para impressão multicolor.',
   'DI — Fabricação Digital',
   null,
-  240, 120, '08:00', '22:00'
+  1440, 120, null, null
 )
 on conflict (slug) do nothing;
 
@@ -110,7 +110,7 @@ insert into public.resources (
   'impressora_3d',
   'Impressora 3D de grande volume com gabinete fechado.',
   'DI — Fabricação Digital',
-  240, 120, '08:00', '22:00'
+  1440, 120, null, null
 )
 on conflict (slug) do nothing;
 
@@ -132,7 +132,7 @@ insert into public.resources (
   'impressora_3d',
   'Impressora 3D de resina (DLP) para alta precisão e detalhes.',
   'DI — Fabricação Digital',
-  240, 120, '08:00', '22:00'
+  1440, 120, null, null
 )
 on conflict (slug) do nothing;
 
@@ -154,7 +154,7 @@ insert into public.resources (
   'kit',
   'Placas, sensores e módulos para prototipagem eletrônica.',
   'Senac — Laboratório de Eletrônica',
-  240, 60, '08:00', '22:00'
+  240, 60, '08:00', '22:45'
 )
 on conflict (slug) do nothing;
 
@@ -179,7 +179,7 @@ insert into public.resources (
   'kit',
   'Componentes eletrônicos e instrumentos básicos para prototipagem.',
   'Senac — Laboratório de Eletrônica',
-  240, 60, '08:00', '22:00'
+  240, 60, '08:00', '22:45'
 )
 on conflict (slug) do nothing;
 
@@ -205,7 +205,7 @@ insert into public.resources (
   'espaco_compartilhado',
   'Espaço compartilhado do DI com máquinas de fabricação, corte, marcenaria e prototipagem. Múltiplas pessoas podem agendar uso orientado no mesmo período — não há exclusividade nem atribuição de unidade. Há sempre técnicos/especialistas no local para auxiliar.',
   'Senac — Departamento de Inovação',
-  120, '08:00', '20:00',
+  120, '08:00', '22:45',
   true,
   array[
     'Uso de jaleco quando exigido pela atividade.',

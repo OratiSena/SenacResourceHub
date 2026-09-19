@@ -5,11 +5,12 @@ import { ArrowLeft, CalendarClock, Clock, MapPin, ShieldCheck } from "lucide-rea
 import { getResourceDetailBySlug } from "@/lib/data/resources";
 import { formatDuracaoMinutos, formatHorario } from "@/lib/resources/format";
 import { getResourceStatusFromCounts } from "@/lib/resources/resource-card-view";
+import { RESOURCE_PHOTOS } from "@/lib/resources/resource-photos";
 import {
   RESOURCE_TYPE_ICONS,
   RESOURCE_TYPE_LABELS,
 } from "@/lib/resources/resource-types";
-import { getResource3DModel } from "@/components/3d/models/registry";
+import { getResource3DEntry } from "@/components/3d/models/registry";
 import { Resource3DViewerLoader } from "@/components/3d/resource-3d-viewer-loader";
 import { ResourceMediaPlaceholder } from "@/components/common/resource-media-placeholder";
 import { ResourceStatus } from "@/components/common/resource-status";
@@ -36,7 +37,10 @@ export default async function ResourceDetailPage({
     operationalCount,
   );
   const CategoryIcon = RESOURCE_TYPE_ICONS[resource.tipo];
-  const has3D = Boolean(getResource3DModel(resource.slug));
+  const has3D = Boolean(getResource3DEntry(resource.slug));
+  const isRoomScene =
+    resource.tipo === "laboratorio" || resource.tipo === "espaco_compartilhado";
+  const photoCredit = RESOURCE_PHOTOS[resource.slug]?.credit;
 
   const ctaLabel = resource.isSharedSpace
     ? "Agendar uso orientado"
@@ -62,16 +66,28 @@ export default async function ResourceDetailPage({
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="aspect-4/3 overflow-hidden rounded-2xl border border-border lg:aspect-auto">
-          {has3D ? (
-            <Resource3DViewerLoader slug={resource.slug} label={resource.nome} />
-          ) : (
-            <ResourceMediaPlaceholder
-              tipo={resource.tipo}
-              slug={resource.slug}
-              label={resource.nome}
-            />
-          )}
+        <div>
+          <div className="aspect-4/3 overflow-hidden rounded-2xl border border-border lg:aspect-auto">
+            {has3D ? (
+              <Resource3DViewerLoader slug={resource.slug} label={resource.nome} />
+            ) : (
+              <ResourceMediaPlaceholder
+                tipo={resource.tipo}
+                slug={resource.slug}
+                label={resource.nome}
+              />
+            )}
+          </div>
+          {isRoomScene ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Representação visual do ambiente — não é uma reprodução exata do espaço real.
+            </p>
+          ) : null}
+          {!has3D && photoCredit ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Foto ilustrativa: {photoCredit}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-5">
