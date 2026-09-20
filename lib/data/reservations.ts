@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { ResourceType } from "@/lib/resources/resource-types";
 
 export interface BusyInterval {
   resourceUnitId: string;
@@ -46,6 +47,7 @@ export interface ReservationListItem {
   resourceNome: string;
   resourceSlug: string;
   resourceLocal: string | null;
+  resourceTipo: ResourceType;
   isSharedSpace: boolean;
   unitCodigo: string | null;
 }
@@ -57,7 +59,7 @@ export async function getMyReservations(): Promise<ReservationListItem[]> {
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
     .order("data_hora_inicio", { ascending: false });
 
@@ -76,6 +78,7 @@ export async function getMyReservations(): Promise<ReservationListItem[]> {
     resourceNome: r.resources?.nome ?? "Recurso",
     resourceSlug: r.resources?.slug ?? "",
     resourceLocal: r.resources?.local ?? null,
+    resourceTipo: r.resources?.tipo ?? "equipamento",
     isSharedSpace: r.resources?.is_shared_space ?? false,
     unitCodigo: r.resource_units?.codigo ?? null,
   }));
@@ -93,7 +96,7 @@ export async function getMyReservationById(
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, created_at, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, created_at, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -114,6 +117,7 @@ export async function getMyReservationById(
     resourceNome: data.resources?.nome ?? "Recurso",
     resourceSlug: data.resources?.slug ?? "",
     resourceLocal: data.resources?.local ?? null,
+    resourceTipo: data.resources?.tipo ?? "equipamento",
     isSharedSpace: data.resources?.is_shared_space ?? false,
     unitCodigo: data.resource_units?.codigo ?? null,
     createdAt: data.created_at,
@@ -127,7 +131,7 @@ export async function getNextReservation(): Promise<ReservationListItem | null> 
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
     .eq("status", "ATIVA")
     .gt("data_hora_fim", new Date().toISOString())
@@ -151,6 +155,7 @@ export async function getNextReservation(): Promise<ReservationListItem | null> 
     resourceNome: data.resources?.nome ?? "Recurso",
     resourceSlug: data.resources?.slug ?? "",
     resourceLocal: data.resources?.local ?? null,
+    resourceTipo: data.resources?.tipo ?? "equipamento",
     isSharedSpace: data.resources?.is_shared_space ?? false,
     unitCodigo: data.resource_units?.codigo ?? null,
   };

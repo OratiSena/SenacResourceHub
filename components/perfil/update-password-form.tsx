@@ -17,14 +17,19 @@ export function UpdatePasswordForm() {
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <FormMessage state={state} />
-      <PasswordInput
-        name="senha"
-        label="Nova senha"
-        autoComplete="new-password"
-        placeholder="Mínimo de 8 caracteres"
-        minLength={8}
-        error={state.fieldErrors?.senha?.[0]}
-      />
+      <div className="space-y-1">
+        <PasswordInput
+          name="senha"
+          label="Nova senha"
+          autoComplete="new-password"
+          placeholder="Digite a nova senha"
+          minLength={8}
+          error={state.fieldErrors?.senha?.[0]}
+        />
+        {!state.fieldErrors?.senha ? (
+          <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
+        ) : null}
+      </div>
       <PasswordInput
         name="confirmarSenha"
         label="Confirmar nova senha"

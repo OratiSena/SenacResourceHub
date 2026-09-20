@@ -15,7 +15,7 @@ import {
 interface ConfirmDialogProps {
   trigger: ReactNode;
   title: string;
-  description?: string;
+  description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;

@@ -1,17 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { ReservationListItem } from "@/lib/data/reservations";
 import {
   deriveReservationStatus,
-  formatDataLocal,
-  formatHoraLocal,
   type ReservationDerivedStatus,
 } from "@/lib/reservations/format";
-import { CancelReservationButton } from "@/components/reservas/cancel-reservation-button";
-import { ReservationStatusBadge } from "@/components/reservas/reservation-status-badge";
+import { ReservationCard } from "@/components/reservas/reservation-card";
 import { EmptyState } from "@/components/common/empty-state";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type FilterKey = "todas" | "futuras" | "em_uso" | "historico" | "canceladas";
@@ -24,6 +23,32 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "canceladas", label: "Canceladas" },
 ];
 
+const EMPTY_COPY: Record<FilterKey, { title: string; description: string }> = {
+  todas: {
+    title: "Você ainda não possui reservas.",
+    description: "Explore o catálogo e escolha um recurso para começar.",
+  },
+  futuras: {
+    title: "Você ainda não possui reservas futuras.",
+    description: "Escolha um recurso e um horário no calendário.",
+  },
+  em_uso: {
+    title: "Nenhuma reserva em uso agora.",
+    description: "Reservas em andamento aparecem aqui automaticamente.",
+  },
+  historico: {
+    title: "Seu histórico está vazio.",
+    description: "Reservas já encerradas aparecerão aqui.",
+  },
+  canceladas: {
+    title: "Nenhuma reserva cancelada.",
+    description: "Reservas que você cancelar ficam registradas aqui.",
+  },
+};
+
+const TAB_TRIGGER_CLASS =
+  "data-active:bg-primary data-active:text-primary-foreground data-active:shadow-none";
+
 function matchesFilter(status: ReservationDerivedStatus, filter: FilterKey) {
   if (filter === "todas") return true;
   if (filter === "futuras") return status === "FUTURA";
@@ -32,12 +57,19 @@ function matchesFilter(status: ReservationDerivedStatus, filter: FilterKey) {
   return status === "CANCELADA";
 }
 
+const QUARENTA_OITO_HORAS_MS = 48 * 60 * 60 * 1000;
+
 export function ReservationsList({
   reservations,
 }: {
   reservations: ReservationListItem[];
 }) {
   const [filter, setFilter] = useState<FilterKey>("todas");
+
+  // Capturado uma única vez (não a cada render) para não violar a regra de
+  // pureza do React — só usado para o indicativo visual da janela de 48h;
+  // cancel_reservation continua sendo a autoridade real no servidor.
+  const [now] = useState(() => Date.now());
 
   const withStatus = useMemo(
     () =>
@@ -48,17 +80,20 @@ export function ReservationsList({
           data_hora_inicio: r.dataHoraInicio,
           data_hora_fim: r.dataHoraFim,
         }),
+        canCancel:
+          new Date(r.dataHoraInicio).getTime() - now >= QUARENTA_OITO_HORAS_MS,
       })),
-    [reservations],
+    [reservations, now],
   );
 
   const filtered = withStatus.filter((r) => matchesFilter(r.status, filter));
+  const emptyCopy = EMPTY_COPY[filter];
 
   return (
     <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-      <TabsList>
+      <TabsList className="h-auto flex-wrap gap-1 bg-muted/70 p-1">
         {FILTERS.map((f) => (
-          <TabsTrigger key={f.key} value={f.key}>
+          <TabsTrigger key={f.key} value={f.key} className={TAB_TRIGGER_CLASS}>
             {f.label}
           </TabsTrigger>
         ))}
@@ -67,44 +102,24 @@ export function ReservationsList({
       <TabsContent value={filter} className="mt-4 space-y-3">
         {filtered.length === 0 ? (
           <EmptyState
-            title="Nenhuma reserva encontrada."
-            description="Não há reservas nesta categoria."
+            title={emptyCopy.title}
+            description={emptyCopy.description}
+            action={
+              filter === "todas" || filter === "futuras" ? (
+                <Button asChild size="sm">
+                  <Link href="/recursos">Explorar recursos</Link>
+                </Button>
+              ) : undefined
+            }
           />
         ) : (
-          filtered.map(({ reservation, status }) => (
-            <div
+          filtered.map(({ reservation, status, canCancel }) => (
+            <ReservationCard
               key={reservation.id}
-              className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-navy">
-                    {reservation.resourceNome}
-                  </p>
-                  <ReservationStatusBadge status={status} />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDataLocal(reservation.dataHoraInicio)} ·{" "}
-                  {formatHoraLocal(reservation.dataHoraInicio)} –{" "}
-                  {formatHoraLocal(reservation.dataHoraFim)}
-                  {!reservation.isSharedSpace && reservation.unitCodigo
-                    ? ` · Unidade ${reservation.unitCodigo}`
-                    : reservation.isSharedSpace
-                      ? " · Uso compartilhado"
-                      : ""}
-                </p>
-                <p className="text-sm text-navy">{reservation.finalidade}</p>
-                {reservation.observacoes ? (
-                  <p className="text-xs text-muted-foreground">
-                    {reservation.observacoes}
-                  </p>
-                ) : null}
-              </div>
-
-              {status === "FUTURA" ? (
-                <CancelReservationButton reservationId={reservation.id} />
-              ) : null}
-            </div>
+              reservation={reservation}
+              status={status}
+              canCancel={canCancel}
+            />
           ))
         )}
       </TabsContent>
