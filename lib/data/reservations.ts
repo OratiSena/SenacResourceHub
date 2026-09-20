@@ -45,6 +45,7 @@ export interface ReservationListItem {
   resourceId: string;
   resourceNome: string;
   resourceSlug: string;
+  resourceLocal: string | null;
   isSharedSpace: boolean;
   unitCodigo: string | null;
 }
@@ -56,7 +57,7 @@ export async function getMyReservations(): Promise<ReservationListItem[]> {
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
     )
     .order("data_hora_inicio", { ascending: false });
 
@@ -74,6 +75,7 @@ export async function getMyReservations(): Promise<ReservationListItem[]> {
     resourceId: r.resource_id,
     resourceNome: r.resources?.nome ?? "Recurso",
     resourceSlug: r.resources?.slug ?? "",
+    resourceLocal: r.resources?.local ?? null,
     isSharedSpace: r.resources?.is_shared_space ?? false,
     unitCodigo: r.resource_units?.codigo ?? null,
   }));
@@ -91,7 +93,7 @@ export async function getMyReservationById(
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, created_at, resources(nome, slug, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, created_at, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -111,6 +113,7 @@ export async function getMyReservationById(
     resourceId: data.resource_id,
     resourceNome: data.resources?.nome ?? "Recurso",
     resourceSlug: data.resources?.slug ?? "",
+    resourceLocal: data.resources?.local ?? null,
     isSharedSpace: data.resources?.is_shared_space ?? false,
     unitCodigo: data.resource_units?.codigo ?? null,
     createdAt: data.created_at,
@@ -124,7 +127,7 @@ export async function getNextReservation(): Promise<ReservationListItem | null> 
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, is_shared_space), resource_units(codigo)",
+      "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, is_shared_space), resource_units(codigo)",
     )
     .eq("status", "ATIVA")
     .gt("data_hora_fim", new Date().toISOString())
@@ -147,6 +150,7 @@ export async function getNextReservation(): Promise<ReservationListItem | null> 
     resourceId: data.resource_id,
     resourceNome: data.resources?.nome ?? "Recurso",
     resourceSlug: data.resources?.slug ?? "",
+    resourceLocal: data.resources?.local ?? null,
     isSharedSpace: data.resources?.is_shared_space ?? false,
     unitCodigo: data.resource_units?.codigo ?? null,
   };

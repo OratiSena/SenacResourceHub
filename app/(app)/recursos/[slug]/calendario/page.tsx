@@ -1,22 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { getResourceDetailBySlug } from "@/lib/data/resources";
 import { getResourceBusyIntervals } from "@/lib/data/reservations";
 import { computeAvailabilitySlots } from "@/lib/reservations/availability";
-import { localDateTimeToISO, todayLocalISODate } from "@/lib/reservations/format";
+import {
+  localDateTimeToISO,
+  shiftLocalDate,
+  todayLocalISODate,
+} from "@/lib/reservations/format";
+import { getResourceStatusFromCounts } from "@/lib/resources/resource-card-view";
 import { PageHeader } from "@/components/common/page-header";
-import { ReservationForm } from "@/components/reservas/reservation-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-
-function shiftDate(dataYYYYMMDD: string, days: number): string {
-  const [y, m, d] = dataYYYYMMDD.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
+import { DateStrip } from "@/components/reservas/date-strip";
+import { ResourceCalendarHeader } from "@/components/reservas/resource-calendar-header";
+import { ReservationScheduler } from "@/components/reservas/reservation-scheduler";
 
 export default async function ResourceCalendarioPage({
   params,
@@ -36,29 +34,49 @@ export default async function ResourceCalendarioPage({
   const data = dataParam && /^\d{4}-\d{2}-\d{2}$/.test(dataParam)
     ? dataParam
     : todayLocalISODate();
-  const diaAnterior = shiftDate(data, -1);
-  const proximoDia = shiftDate(data, 1);
 
   const operationalUnits = resource.units.filter(
     (u) => u.status === "disponivel",
   );
+  const status = getResourceStatusFromCounts(
+    resource.isSharedSpace,
+    operationalUnits.length,
+  );
 
-  let busyIntervals: Awaited<ReturnType<typeof getResourceBusyIntervals>> = [];
-  if (!resource.isSharedSpace && operationalUnits.length > 0) {
+  const semJanelaDiaria = !resource.horarioAbertura || !resource.horarioFechamento;
+  const mode = resource.isSharedSpace
+    ? "shared"
+    : semJanelaDiaria
+      ? "no-window"
+      : "grid";
+
+  let slots: ReturnType<typeof computeAvailabilitySlots> = [];
+  let printerBusyIntervals: Awaited<ReturnType<typeof getResourceBusyIntervals>> = [];
+
+  if (mode === "grid" && operationalUnits.length > 0) {
     const startISO = localDateTimeToISO(data, "00:00");
-    const endISO = localDateTimeToISO(shiftDate(data, 1), "00:00");
-    busyIntervals = await getResourceBusyIntervals(resource.id, startISO, endISO);
+    const endISO = localDateTimeToISO(shiftLocalDate(data, 1), "00:00");
+    const busyIntervals = await getResourceBusyIntervals(resource.id, startISO, endISO);
+    slots = computeAvailabilitySlots({
+      dataYYYYMMDD: data,
+      horarioAbertura: resource.horarioAbertura,
+      horarioFechamento: resource.horarioFechamento,
+      operationalUnitIds: operationalUnits.map((u) => u.id),
+      busyIntervals,
+    });
+  } else if (mode === "no-window" && operationalUnits.length > 0) {
+    // Sem janela diária fixa: em vez de uma grade de horários (que não faria
+    // sentido — o recurso não fecha), mostramos as próximas ocupações reais
+    // num período mais largo (14 dias), para o usuário evitar conflitos sem
+    // depender de uma grade "infinita".
+    const startISO = localDateTimeToISO(data, "00:00");
+    const endISO = localDateTimeToISO(shiftLocalDate(data, 14), "00:00");
+    printerBusyIntervals = await getResourceBusyIntervals(resource.id, startISO, endISO);
   }
 
-  const slots = resource.isSharedSpace
-    ? []
-    : computeAvailabilitySlots({
-        dataYYYYMMDD: data,
-        horarioAbertura: resource.horarioAbertura,
-        horarioFechamento: resource.horarioFechamento,
-        operationalUnitIds: operationalUnits.map((u) => u.id),
-        busyIntervals,
-      });
+  const printerUnitCodigoById = Object.fromEntries(
+    resource.units.map((u) => [u.id, u.codigo]),
+  );
 
   return (
     <div className="space-y-6 pb-8">
@@ -71,7 +89,7 @@ export default async function ResourceCalendarioPage({
       </Link>
 
       <PageHeader
-        eyebrow={resource.nome}
+        eyebrow="Calendário"
         title="Calendário e disponibilidade"
         description={
           resource.isSharedSpace
@@ -80,84 +98,31 @@ export default async function ResourceCalendarioPage({
         }
       />
 
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`?data=${diaAnterior}`}>
-            <ChevronLeft aria-hidden="true" />
-            Dia anterior
-          </Link>
-        </Button>
-        <span className="text-sm font-semibold text-navy">
-          {new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", {
-            weekday: "long",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })}
-        </span>
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`?data=${proximoDia}`}>
-            Próximo dia
-            <ChevronRight aria-hidden="true" />
-          </Link>
-        </Button>
-      </div>
+      <ResourceCalendarHeader
+        slug={resource.slug}
+        nome={resource.nome}
+        tipo={resource.tipo}
+        local={resource.local}
+        status={status}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-navy">Disponibilidade</h2>
+      {mode === "grid" ? (
+        <DateStrip data={data} baseHref={`/recursos/${slug}/calendario`} />
+      ) : null}
 
-          {resource.isSharedSpace ? (
-            <div className="space-y-1 rounded-xl border border-info/20 bg-info/5 p-4">
-              <p className="text-sm font-semibold text-info">Uso compartilhado</p>
-              <p className="text-sm text-muted-foreground">
-                Este espaço aceita múltiplos agendamentos no mesmo horário —
-                não há verificação de exclusividade.
-              </p>
-            </div>
-          ) : operationalUnits.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma unidade operacional cadastrada para este recurso no momento.
-            </p>
-          ) : slots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Este recurso não possui horário de funcionamento configurado.
-            </p>
-          ) : (
-            <ul className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-              {slots.map((slot) => (
-                <li
-                  key={slot.horaInicio}
-                  className="flex items-center justify-between rounded-lg border border-border px-2.5 py-1.5 text-xs"
-                >
-                  <span className="font-medium text-navy">
-                    {slot.horaInicio}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={
-                      slot.unidadesLivres > 0
-                        ? "border-success/20 bg-success/10 text-success"
-                        : "border-destructive/20 bg-destructive/10 text-destructive"
-                    }
-                  >
-                    {slot.unidadesLivres}/{operationalUnits.length}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold text-navy">Nova reserva</h2>
-          <ReservationForm
-            resourceId={resource.id}
-            resourceSlug={resource.slug}
-            data={data}
-          />
-        </section>
-      </div>
+      <ReservationScheduler
+        mode={mode}
+        resourceId={resource.id}
+        resourceSlug={resource.slug}
+        resourceNome={resource.nome}
+        data={data}
+        slots={slots}
+        operationalUnitsTotal={operationalUnits.length}
+        duracaoMaximaMinutos={resource.duracaoMaximaMinutos}
+        antecedenciaMinimaMinutos={resource.antecedenciaMinimaMinutos}
+        printerBusyIntervals={printerBusyIntervals}
+        printerUnitCodigoById={printerUnitCodigoById}
+      />
     </div>
   );
 }

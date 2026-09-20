@@ -79,6 +79,48 @@ export function todayLocalISODate(): string {
   return dtf.format(new Date());
 }
 
+/** "2026-09-17" + 3 -> "2026-09-20" (aritmética pura de calendário, sem fuso). */
+export function shiftLocalDate(dataYYYYMMDD: string, days: number): string {
+  const [y, m, d] = dataYYYYMMDD.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+const weekdayShortFormatter = new Intl.DateTimeFormat("pt-BR", { weekday: "short" });
+
+/** "2026-09-17" -> "qui" (abreviação de dia da semana, para a tira de datas). */
+export function formatDiaCurto(dataYYYYMMDD: string): string {
+  return weekdayShortFormatter.format(new Date(`${dataYYYYMMDD}T12:00:00`)).replace(".", "");
+}
+
+/** "2026-09-17" -> "17" (dia do mês, para a tira de datas). */
+export function formatDiaDoMes(dataYYYYMMDD: string): string {
+  return dataYYYYMMDD.slice(8, 10);
+}
+
+/** "2026-09-17" -> "quinta-feira, 17/09/2026" (para o resumo da reserva). */
+export function formatDataLonga(dataYYYYMMDD: string): string {
+  return new Date(`${dataYYYYMMDD}T12:00:00`).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+/** Diferença entre dois ISO timestamptz -> "4 horas" / "1h30min" (mesma convenção de formatDuracaoMinutos). */
+export function formatDuracaoEntre(inicioISO: string, fimISO: string): string {
+  const minutos = Math.round(
+    (new Date(fimISO).getTime() - new Date(inicioISO).getTime()) / 60_000,
+  );
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (horas === 0) return `${minutos} min`;
+  if (resto === 0) return horas === 1 ? "1 hora" : `${horas} horas`;
+  return `${horas}h${resto}min`;
+}
+
 export type ReservationDerivedStatus = "FUTURA" | "EM_USO" | "EXPIRADA" | "CANCELADA";
 
 export function deriveReservationStatus(reservation: {
