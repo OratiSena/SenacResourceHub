@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { getCurrentProfile } from "@/lib/auth/current-profile";
+import { getNotificationsForProfile } from "@/lib/notifications/get-notifications";
 import { AppShell, type AppShellUser } from "@/components/layout/app-shell";
 
 function buildInitials(nome: string) {
@@ -30,6 +31,7 @@ export default async function AppLayout({
   }
 
   const user: AppShellUser = {
+    id: profile.id,
     nome: profile.nome,
     subtitulo:
       profile.role === "admin"
@@ -39,5 +41,11 @@ export default async function AppLayout({
     role: profile.role,
   };
 
-  return <AppShell user={user}>{children}</AppShell>;
+  const notifications = await getNotificationsForProfile(profile);
+
+  return (
+    <AppShell user={user} notifications={notifications}>
+      {children}
+    </AppShell>
+  );
 }

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Bell, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth";
+import type { AppNotification } from "@/lib/notifications/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,14 +19,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import type { AppShellUser } from "@/components/layout/app-shell";
 
 export function AppHeader({
   user,
   showAdmin,
+  notifications,
 }: {
   user: AppShellUser;
   showAdmin: boolean;
+  notifications: AppNotification[];
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -61,18 +65,7 @@ export function AppHeader({
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Notificações"
-          className="relative"
-        >
-          <Bell className="size-5" aria-hidden="true" />
-          <span
-            className="absolute top-1.5 right-1.5 size-2 rounded-full bg-orange"
-            aria-hidden="true"
-          />
-        </Button>
+        <NotificationBell notifications={notifications} userId={user.id} />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

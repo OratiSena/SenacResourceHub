@@ -160,6 +160,50 @@ function buildNext7DaysBuckets(startTimestamps: string[]): ReservationsPerDay[] 
   return days;
 }
 
+export interface AdminRecentActivityItem {
+  id: string;
+  status: "ATIVA" | "CANCELADA";
+  usuarioNome: string;
+  resourceNome: string;
+  dataHoraInicio: string;
+  createdAt: string;
+  canceladoEm: string | null;
+}
+
+/**
+ * Reservas de qualquer usuário criadas ou canceladas desde `sinceISO` — só
+ * para alimentar o painel de notificações do admin, nunca uma listagem geral
+ * (para isso já existe `getAdminReservations`, paginada).
+ */
+export async function getAdminRecentReservationActivity(
+  sinceISO: string,
+): Promise<AdminRecentActivityItem[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .select(
+      "id, status, data_hora_inicio, created_at, cancelado_em, profiles!reservations_user_id_fkey(nome), resources(nome)",
+    )
+    .or(`created_at.gte.${sinceISO},cancelado_em.gte.${sinceISO}`)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    throw new Error("Não foi possível carregar a atividade recente.");
+  }
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    status: r.status,
+    usuarioNome: r.profiles?.nome ?? "Usuário",
+    resourceNome: r.resources?.nome ?? "Recurso",
+    dataHoraInicio: r.data_hora_inicio,
+    createdAt: r.created_at,
+    canceladoEm: r.cancelado_em,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Recursos
 // ---------------------------------------------------------------------------

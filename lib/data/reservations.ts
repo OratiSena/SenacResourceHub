@@ -124,6 +124,52 @@ export async function getMyReservationById(
   };
 }
 
+export interface ReservationNotificationItem {
+  id: string;
+  status: "ATIVA" | "CANCELADA";
+  dataHoraInicio: string;
+  dataHoraFim: string;
+  resourceNome: string;
+  createdAt: string;
+  canceladoEm: string | null;
+}
+
+/**
+ * Reservas da própria pessoa com carimbos de tempo, só para montar o painel
+ * de notificações. Filtra `user_id` explicitamente (não só via RLS) porque
+ * quem chama pode ser um admin — que tem acesso de leitura mais amplo via
+ * RLS para as telas `/admin/**`, e não deve ver reserva de outra pessoa
+ * aqui só porque a política de leitura é mais permissiva para esse papel.
+ */
+export async function getMyReservationsForNotifications(
+  userId: string,
+): Promise<ReservationNotificationItem[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .select(
+      "id, status, data_hora_inicio, data_hora_fim, created_at, cancelado_em, resources(nome)",
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    throw new Error("Não foi possível carregar notificações.");
+  }
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    status: r.status,
+    dataHoraInicio: r.data_hora_inicio,
+    dataHoraFim: r.data_hora_fim,
+    resourceNome: r.resources?.nome ?? "Recurso",
+    createdAt: r.created_at,
+    canceladoEm: r.cancelado_em,
+  }));
+}
+
 /** Próxima reserva futura ativa da pessoa (para a Home). */
 export async function getNextReservation(): Promise<ReservationListItem | null> {
   const supabase = await createClient();

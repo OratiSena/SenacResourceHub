@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
+import type { AppNotification } from "@/lib/notifications/types";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
 export interface AppShellUser {
+  id: string;
   nome: string;
   /** Linha secundária sob o nome — categoria/vínculo ou e-mail. */
   subtitulo: string;
@@ -21,9 +23,11 @@ export interface AppShellUser {
  */
 export function AppShell({
   user,
+  notifications = [],
   children,
 }: {
   user: AppShellUser;
+  notifications?: AppNotification[];
   children: ReactNode;
 }) {
   const showAdmin = user.role === "admin";
@@ -36,7 +40,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-10">
-          <AppHeader user={user} showAdmin={showAdmin} />
+          <AppHeader user={user} showAdmin={showAdmin} notifications={notifications} />
         </div>
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>

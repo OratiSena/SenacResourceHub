@@ -22,6 +22,7 @@ export default function DesignSystemLayout({
   return (
     <AppShell
       user={{
+        id: "demo-user",
         nome: DEMO_USER.nome,
         subtitulo: DEMO_USER.papel,
         iniciais: DEMO_USER.iniciais,
