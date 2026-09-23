@@ -106,11 +106,16 @@ export default async function ResourceCalendarioPage({
         status={status}
       />
 
-      {mode === "grid" ? (
+      {mode !== "no-window" ? (
         <DateStrip data={data} baseHref={`/recursos/${slug}/calendario`} />
       ) : null}
 
       <ReservationScheduler
+        // Remonta ao trocar de data (DateStrip) para nunca herdar uma
+        // seleção de horário feita para outro dia — sem isso, horaInicio/
+        // horaFim (estado local do componente) sobreviveriam à navegação e
+        // seriam recombinados silenciosamente com a nova data.
+        key={data}
         mode={mode}
         resourceId={resource.id}
         resourceSlug={resource.slug}

@@ -30,6 +30,12 @@ interface ReservationSchedulerProps {
   resourceId: string;
   resourceSlug: string;
   resourceNome: string;
+  /**
+   * Data selecionada/sugerida (DateStrip ou query param `?data=`). Fonte de
+   * verdade direta do início/fim para os modos "grid" e "shared" (recursos
+   * de um dia só). Para "no-window" (impressoras), é só o valor INICIAL do
+   * campo "Data de início", editável — nunca fica escondida (ver Prompt 7.2).
+   */
   data: string;
   slots: AvailabilitySlot[];
   operationalUnitsTotal: number;
@@ -53,6 +59,11 @@ function computeMinFreeUnits(
   return Math.min(...relevant.map((s) => s.unidadesLivres));
 }
 
+/** "22/09/2026" a partir de uma data pura (YYYY-MM-DD), via o mesmo truque de meio-dia usado no resto do arquivo. */
+function formatDataCurta(dataYYYYMMDD: string): string {
+  return formatDataLocal(localDateTimeToISO(dataYYYYMMDD, "12:00"));
+}
+
 export function ReservationScheduler({
   mode,
   resourceId,
@@ -71,9 +82,12 @@ export function ReservationScheduler({
     INITIAL_ACTION_STATE,
   );
 
+  // Só usada pelo modo "no-window" — nos outros dois modos, a data de
+  // início É a `data` recebida (DateStrip), nunca um estado paralelo.
+  const [dataInicio, setDataInicio] = useState(data);
+  const [dataFim, setDataFim] = useState(data);
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
-  const [dataFim, setDataFim] = useState(data);
   const [finalidade, setFinalidade] = useState("");
 
   // Capturado uma única vez na montagem (não a cada render, para não violar
@@ -81,6 +95,9 @@ export function ReservationScheduler({
   // aceitável aqui, já que o servidor sempre revalida antecedência/horário
   // de verdade ao confirmar (create_reservation).
   const [now] = useState(() => Date.now());
+
+  const dataInicioEfetiva = mode === "no-window" ? dataInicio : data;
+  const dataFimEfetiva = mode === "no-window" ? dataFim : data;
 
   function handleSlotClick(slot: AvailabilitySlot) {
     if (slot.unidadesLivres <= 0) return;
@@ -100,13 +117,13 @@ export function ReservationScheduler({
     }
   }
 
-  const inicioISO = horaInicio ? localDateTimeToISO(data, horaInicio) : null;
-  const fimISO = horaFim
-    ? localDateTimeToISO(mode === "no-window" ? dataFim : data, horaFim)
+  const inicioISO = horaInicio
+    ? localDateTimeToISO(dataInicioEfetiva, horaInicio)
     : null;
+  const fimISO = horaFim ? localDateTimeToISO(dataFimEfetiva, horaFim) : null;
 
   const duracaoMinutos =
-    horaInicio && horaFim ? minutesBetween(inicioISO!, fimISO!) : null;
+    inicioISO && fimISO ? minutesBetween(inicioISO, fimISO) : null;
 
   const excedeMaximo =
     duracaoMinutos != null &&
@@ -122,17 +139,22 @@ export function ReservationScheduler({
 
   const semUnidadeLivre = mode === "grid" && minFreeUnits === 0;
 
+  const inicioNoPassado = inicioISO != null && new Date(inicioISO).getTime() < now;
   const antecedenciaInsuficiente =
-    inicioISO != null && new Date(inicioISO).getTime() < now + antecedenciaMinimaMinutos * 60_000;
+    inicioISO != null &&
+    !inicioNoPassado &&
+    new Date(inicioISO).getTime() < now + antecedenciaMinimaMinutos * 60_000;
 
   const horarioSelecionado = Boolean(horaInicio && horaFim);
   const finalidadePreenchida = finalidade.trim().length > 0;
+  const datasCruzamDia = mode === "no-window" && dataInicioEfetiva !== dataFimEfetiva;
 
   const canSubmit =
     horarioSelecionado &&
     !excedeMaximo &&
     !intervaloInvalido &&
     !semUnidadeLivre &&
+    !inicioNoPassado &&
     !antecedenciaInsuficiente &&
     finalidadePreenchida &&
     !pending;
@@ -146,7 +168,7 @@ export function ReservationScheduler({
   return (
     <form action={formAction} className="grid min-w-0 gap-6 lg:grid-cols-[1.2fr_1fr]">
       <input type="hidden" name="resourceId" value={resourceId} />
-      <input type="hidden" name="data" value={data} />
+      <input type="hidden" name="data" value={dataInicioEfetiva} />
       <input type="hidden" name="horaInicio" value={horaInicio} />
       <input type="hidden" name="horaFim" value={horaFim} />
       {mode === "no-window" ? (
@@ -207,7 +229,21 @@ export function ReservationScheduler({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="horaInicioNw">Início</Label>
+                <Label htmlFor="dataInicioNw">Data de início</Label>
+                <Input
+                  id="dataInicioNw"
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => {
+                    setDataInicio(e.target.value);
+                    // Fim nunca fica implicitamente antes do início.
+                    if (e.target.value > dataFim) setDataFim(e.target.value);
+                  }}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="horaInicioNw">Hora de início</Label>
                 <Input
                   id="horaInicioNw"
                   type="time"
@@ -215,24 +251,26 @@ export function ReservationScheduler({
                   onChange={(e) => setHoraInicio(e.target.value)}
                   required
                 />
-                <p className="text-xs text-muted-foreground">{formatDataLocal(localDateTimeToISO(data, "12:00"))}</p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="horaFimNw">Fim</Label>
+                <Label htmlFor="dataFimNw">Data de término</Label>
+                <Input
+                  id="dataFimNw"
+                  type="date"
+                  value={dataFim}
+                  min={dataInicio}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="horaFimNw">Hora de término</Label>
                 <Input
                   id="horaFimNw"
                   type="time"
                   value={horaFim}
                   onChange={(e) => setHoraFim(e.target.value)}
                   required
-                />
-                <Input
-                  type="date"
-                  value={dataFim}
-                  min={data}
-                  onChange={(e) => setDataFim(e.target.value)}
-                  aria-label="Data de término"
-                  className="mt-1"
                 />
               </div>
             </div>
@@ -365,27 +403,54 @@ export function ReservationScheduler({
             <dt className="text-muted-foreground">Recurso</dt>
             <dd className="font-medium text-navy">{resourceNome}</dd>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Data</dt>
-            <dd className="text-right font-medium text-navy capitalize">
-              {formatDataLonga(data)}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-muted-foreground">Horário</dt>
-            <dd className="font-medium text-navy">
-              {horarioSelecionado ? (
-                <>
+
+          {!horarioSelecionado ? (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Data</dt>
+                <dd className="text-right font-medium text-navy capitalize">
+                  {formatDataLonga(dataInicioEfetiva)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Horário</dt>
+                <dd className="font-medium text-muted-foreground">
+                  Selecione um horário
+                </dd>
+              </div>
+            </>
+          ) : datasCruzamDia ? (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Início</dt>
+                <dd className="font-medium text-navy">
+                  {formatDataCurta(dataInicioEfetiva)} {horaInicio}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Fim</dt>
+                <dd className="font-medium text-navy">
+                  {formatDataCurta(dataFimEfetiva)} {horaFim}
+                </dd>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Data</dt>
+                <dd className="text-right font-medium text-navy capitalize">
+                  {formatDataLonga(dataInicioEfetiva)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Horário</dt>
+                <dd className="font-medium text-navy">
                   {horaInicio} – {horaFim}
-                  {mode === "no-window" && dataFim !== data
-                    ? ` (${formatDataLocal(localDateTimeToISO(dataFim, "12:00"))})`
-                    : null}
-                </>
-              ) : (
-                <span className="text-muted-foreground">Selecione um horário</span>
-              )}
-            </dd>
-          </div>
+                </dd>
+              </div>
+            </>
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Duração</dt>
             <dd className="font-medium text-navy">
@@ -423,16 +488,32 @@ export function ReservationScheduler({
           </div>
         </dl>
 
-        {excedeMaximo ? (
+        {intervaloInvalido ? (
           <Alert variant="destructive">
             <AlertCircle className="size-4" aria-hidden="true" />
             <AlertDescription>
-              A duração selecionada excede o máximo permitido de{" "}
-              {formatDuracaoMin(duracaoMaximaMinutos!)} para este recurso.
+              O término deve ocorrer depois do início.
             </AlertDescription>
           </Alert>
         ) : null}
-        {!excedeMaximo && antecedenciaInsuficiente ? (
+        {!intervaloInvalido && excedeMaximo ? (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" aria-hidden="true" />
+            <AlertDescription>
+              A duração máxima para este recurso é de{" "}
+              {formatDuracaoMin(duracaoMaximaMinutos!)}.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {!intervaloInvalido && !excedeMaximo && inicioNoPassado ? (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" aria-hidden="true" />
+            <AlertDescription>
+              Não é possível iniciar uma reserva no passado.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {!intervaloInvalido && !excedeMaximo && !inicioNoPassado && antecedenciaInsuficiente ? (
           <Alert variant="destructive">
             <AlertCircle className="size-4" aria-hidden="true" />
             <AlertDescription>
