@@ -51,7 +51,15 @@ export default async function AdminUsuariosPage({
   const currentProfile = await requireAdminProfile();
   const params = await searchParams;
   const role = params.role === "user" || params.role === "admin" ? params.role : undefined;
-  const status = params.status === "active" || params.status === "deleted" ? params.status : undefined;
+  // Sem parâmetro na URL (primeira visita) mostra só ativos por padrão —
+  // evita poluir a listagem com contas já excluídas/anonimizadas. "todos" é
+  // a opção explícita do <Select> para o admin ver o histórico completo.
+  const status =
+    params.status === "active" || params.status === "deleted"
+      ? params.status
+      : params.status === "todos"
+        ? undefined
+        : "active";
 
   const { items: users, total, page, pageSize } = await getAdminUsers({
     page: params.page ? Number(params.page) : 1,
@@ -60,7 +68,7 @@ export default async function AdminUsuariosPage({
     status,
   });
 
-  const hasFilters = Boolean(params.search || role || status);
+  const hasFilters = Boolean(params.search || params.role || params.status);
 
   return (
     <div className="space-y-6">
@@ -69,15 +77,6 @@ export default async function AdminUsuariosPage({
         title="Usuários"
         description="Consulte usuários, promova administradores e gerencie contas."
       />
-
-      <div className="rounded-xl border border-info/20 bg-info/5 p-4 text-sm text-info">
-        Para criar o primeiro administrador do sistema, execute no SQL Editor
-        do Supabase:{" "}
-        <code className="rounded bg-info/10 px-1.5 py-0.5 font-mono text-xs">
-          UPDATE public.profiles SET role=&apos;admin&apos; WHERE
-          email=&apos;EMAIL_DO_ADMIN_ESCOLHIDO&apos;;
-        </code>
-      </div>
 
       <form className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4">
         <div className="min-w-48 flex-1 space-y-1.5">
