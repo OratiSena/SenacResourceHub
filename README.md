@@ -88,6 +88,6 @@ documentacao/
 
 ## Deploy
 
-Produção: _(adicionado após a confirmação do primeiro deploy bem-sucedido)_
+Produção: https://senac-resource-hub.vercel.app
 
 Banco de dados e autenticação: Supabase Cloud.
