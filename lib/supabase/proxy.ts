@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   "/auth/confirm",
   "/termos",
   "/privacidade",
+  "/creditos",
 ];
 
 // Rotas que um usuário já autenticado não deve conseguir reabrir — ele é

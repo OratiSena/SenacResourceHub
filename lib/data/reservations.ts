@@ -1,6 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ResourceType } from "@/lib/resources/resource-types";
 
+/**
+ * `auth.uid()` do servidor, a partir do JWT validado da própria sessão —
+ * nunca de um parâmetro que um caller poderia (por engano ou não) passar
+ * como o id de outra pessoa. Usado por toda consulta "da própria pessoa"
+ * abaixo, porque a RLS de `reservations` é mais ampla para Admin (necessária
+ * para `/admin/**`) e não pode ser a única barreira aqui — ver
+ * `documentacao/decisoes/admin.md`.
+ */
+async function getAuthenticatedUserId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string> {
+  const { data } = await supabase.auth.getClaims();
+  const sub = data?.claims?.sub;
+  if (!sub) {
+    throw new Error("Sessão inválida.");
+  }
+  return sub;
+}
+
 export interface BusyInterval {
   resourceUnitId: string;
   inicio: string;
@@ -52,15 +71,22 @@ export interface ReservationListItem {
   unitCodigo: string | null;
 }
 
-/** Reservas da própria pessoa (RLS já restringe a user_id = auth.uid()). */
+/**
+ * Reservas da própria pessoa. Filtra `user_id` explicitamente — não confia
+ * só na RLS, porque para Admin ela é mais ampla (necessária para
+ * `/admin/reservas`) e sem esse filtro esta consulta devolveria reserva de
+ * qualquer usuário quando chamada por um Admin.
+ */
 export async function getMyReservations(): Promise<ReservationListItem[]> {
   const supabase = await createClient();
+  const userId = await getAuthenticatedUserId(supabase);
 
   const { data, error } = await supabase
     .from("reservations")
     .select(
       "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
+    .eq("user_id", userId)
     .order("data_hora_inicio", { ascending: false });
 
   if (error) {
@@ -88,10 +114,12 @@ export interface ReservationDetail extends ReservationListItem {
   createdAt: string;
 }
 
+/** Mesma regra: só a reserva pedida se ela pertencer à própria pessoa. */
 export async function getMyReservationById(
   id: string,
 ): Promise<ReservationDetail | null> {
   const supabase = await createClient();
+  const userId = await getAuthenticatedUserId(supabase);
 
   const { data, error } = await supabase
     .from("reservations")
@@ -99,6 +127,7 @@ export async function getMyReservationById(
       "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, created_at, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
     .eq("id", id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -173,12 +202,14 @@ export async function getMyReservationsForNotifications(
 /** Próxima reserva futura ativa da pessoa (para a Home). */
 export async function getNextReservation(): Promise<ReservationListItem | null> {
   const supabase = await createClient();
+  const userId = await getAuthenticatedUserId(supabase);
 
   const { data, error } = await supabase
     .from("reservations")
     .select(
       "id, status, data_hora_inicio, data_hora_fim, finalidade, observacoes, resource_id, resources(nome, slug, local, tipo, is_shared_space), resource_units(codigo)",
     )
+    .eq("user_id", userId)
     .eq("status", "ATIVA")
     .gt("data_hora_fim", new Date().toISOString())
     .order("data_hora_inicio", { ascending: true })

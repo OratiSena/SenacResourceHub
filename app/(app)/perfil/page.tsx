@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth";
@@ -125,6 +126,12 @@ export default async function PerfilPage() {
           </section>
         </div>
       </div>
+
+      <p className="text-center text-xs text-muted-foreground">
+        <Link href="/creditos" className="hover:text-foreground hover:underline">
+          Créditos e Licenças
+        </Link>
+      </p>
     </div>
   );
 }

@@ -6,26 +6,54 @@ Sistema de Reservas de Laboratórios e Equipamentos do Centro Universitário Sen
 
 Permitir que alunos e usuários autorizados consultem a disponibilidade e reservem laboratórios, equipamentos e espaços acadêmicos do Senac, com atribuição automática de unidade física dentro do tipo de recurso escolhido.
 
-O projeto foi desenvolvido em um prazo acadêmico reduzido, de aproximadamente uma semana, com solicitação de uso de ferramentas de Inteligência Artificial como apoio ao processo de desenvolvimento, organização, validação e aceleração da implementação.
+O projeto foi desenvolvido em um prazo acadêmico reduzido, de aproximadamente uma semana, com uso significativo de Inteligência Artificial como apoio ao processo de desenvolvimento, organização, validação e aceleração da implementação.
 
-## Stack atual
+## Funcionalidades
 
-- [Next.js](https://nextjs.org/) (App Router) + TypeScript + React
+- Cadastro e login
+- Confirmação de e-mail
+- Recuperação de senha
+- Catálogo de recursos (laboratórios, equipamentos, impressoras 3D, kits e espaço compartilhado)
+- Visualizações 3D interativas por recurso
+- Consulta de disponibilidade em calendário
+- Reservas com atribuição automática de unidade física
+- Oficina de Fabricação e Prototipagem (espaço compartilhado, uso orientado)
+- Minhas Reservas
+- Perfil (dados pessoais, senha, exclusão de conta)
+- Notificações (reservas próprias e, para administradores, atividade administrativa)
+- Área administrativa completa (dashboard, recursos, unidades, reservas, usuários)
+
+## Tecnologias
+
+- Next.js
+- React
+- TypeScript
+- Supabase
+- PostgreSQL
 - Tailwind CSS
-- ESLint
+- Three.js / React Three Fiber
+- Vercel
 
-Supabase (banco de dados e autenticação), design system definitivo, animações e 3D serão adicionados em etapas futuras — ver `CLAUDE.md` e `documentacao/decisoes/contexto-projeto.md`.
+## Perfis
+
+- **User** — reserva recursos, gerencia as próprias reservas e o próprio perfil.
+- **Admin** — tudo o que um User faz, além de gerenciar recursos, unidades, reservas de qualquer usuário e outros usuários.
+
+Todo cadastro público cria automaticamente um usuário `User` — não existe seleção de perfil no cadastro. Um Admin promove um `User` existente a `Admin` em `/admin/usuarios`; o primeiro Admin do sistema é configurado manualmente no banco (ver `documentacao/decisoes/admin.md`).
 
 ## Requisitos para executar
 
 - Node.js 20 ou superior
 - npm
+- Um projeto Supabase (URL + publishable key)
 
 ## Como instalar
 
 ```bash
 npm install
 ```
+
+Copie `.env.example` para `.env.local` e preencha os valores do seu projeto Supabase.
 
 ## Como iniciar o desenvolvimento
 
@@ -47,17 +75,19 @@ npm run start
 ```
 app/                  rotas e páginas (App Router)
 components/           componentes de UI compartilhados
-lib/                  utilitários e lógica compartilhada
+lib/                  utilitários, camada de dados e lógica compartilhada
 public/
   imagens/            imagens estáticas
-  modelos3d/          modelos 3D dos recursos
+supabase/
+  migrations/         schema versionado do banco
 documentacao/
   requisitos/         documento original de requisitos
   referencias/         mockups de referência visual
   decisoes/            decisões arquiteturais consolidadas
-scripts/              scripts utilitários do projeto
 ```
 
-## Próximos passos
+## Deploy
 
-Supabase, autenticação, banco de dados e deploy ainda não foram configurados — serão implementados nos próximos prompts, conforme registrado em `CLAUDE.md`.
+Produção: _(adicionado após a confirmação do primeiro deploy bem-sucedido)_
+
+Banco de dados e autenticação: Supabase Cloud.
