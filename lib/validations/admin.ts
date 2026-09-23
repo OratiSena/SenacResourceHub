@@ -83,3 +83,13 @@ export const unitStatusSchema = z.object({
   unitId: z.string().uuid(),
   status: z.enum(UNIT_STATUS_VALUES),
 });
+
+export const adminUpdateUserSchema = z.object({
+  userId: z.string().uuid(),
+  nome: z
+    .string()
+    .trim()
+    .min(1, CAMPO_OBRIGATORIO)
+    .max(100, "Máximo de 100 caracteres.")
+    .refine((v) => v.trim().length > 0, "Nome não pode conter apenas espaços."),
+});

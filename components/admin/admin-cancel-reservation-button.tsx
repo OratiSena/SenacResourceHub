@@ -4,50 +4,78 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { adminCancelReservationAction } from "@/lib/actions/admin";
+import { formatDataLocal, formatHoraLocal } from "@/lib/reservations/format";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Button } from "@/components/ui/button";
 
+interface AdminCancelReservationButtonProps {
+  reservationId: string;
+  usuarioNome: string;
+  resourceNome: string;
+  dataHoraInicio: string;
+  dataHoraFim: string;
+}
+
 export function AdminCancelReservationButton({
   reservationId,
-}: {
-  reservationId: string;
-}) {
+  usuarioNome,
+  resourceNome,
+  dataHoraInicio,
+  dataHoraFim,
+}: AdminCancelReservationButtonProps) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ status: "error" | "success"; message: string } | null>(null);
   const router = useRouter();
 
   function handleConfirm() {
-    setError(null);
+    setResult(null);
     startTransition(async () => {
-      const result = await adminCancelReservationAction(reservationId);
-      if (result.status === "error") {
-        setError(result.message ?? "Não foi possível cancelar a reserva.");
+      const actionResult = await adminCancelReservationAction(reservationId);
+      if (actionResult.status === "error") {
+        setResult({
+          status: "error",
+          message: actionResult.message ?? "Não foi possível cancelar a reserva.",
+        });
         return;
       }
+      setResult({ status: "success", message: "Reserva cancelada com sucesso." });
       setOpen(false);
       router.refresh();
     });
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <ConfirmDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setResult(null);
+        }}
         trigger={
           <Button variant="outline" size="sm">
             Cancelar
           </Button>
         }
-        title="Cancelar esta reserva?"
-        description="Como administrador, você pode cancelar qualquer reserva ativa. Esta ação não pode ser desfeita."
+        title="Cancelar reserva?"
+        description={`${usuarioNome} · ${resourceNome} · ${formatDataLocal(dataHoraInicio)} · ${formatHoraLocal(dataHoraInicio)}–${formatHoraLocal(dataHoraFim)}. Como administrador, você pode cancelar qualquer reserva ativa — a reserva permanece no histórico como cancelada.`}
         confirmLabel={pending ? "Cancelando..." : "Sim, cancelar"}
         cancelLabel="Voltar"
         destructive
         onConfirm={handleConfirm}
       />
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {result ? (
+        <Alert
+          variant={result.status === "error" ? "destructive" : "default"}
+          className={result.status === "success" ? "border-success/20 bg-success/5" : undefined}
+        >
+          <AlertDescription className={result.status === "success" ? "text-success" : undefined}>
+            {result.message}
+          </AlertDescription>
+        </Alert>
+      ) : null}
     </div>
   );
 }

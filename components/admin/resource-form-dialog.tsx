@@ -39,12 +39,30 @@ interface ResourceFormDialogProps {
   resource?: AdminResourceListItem;
 }
 
+function slugify(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function ResourceFormDialog({ trigger, resource }: ResourceFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<ActionState>(INITIAL_ACTION_STATE);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const action = resource ? updateResourceAction : createResourceAction;
+
+  // Slug gerado automaticamente a partir do nome enquanto o usuário não
+  // editar o campo slug manualmente (Prompt 9.1, seção 8.1) — só faz
+  // sentido para criação; ao editar um recurso existente, o slug começa
+  // "travado" no valor atual (slugTouched=true), preservando URLs antigas.
+  const [nome, setNome] = useState(resource?.nome ?? "");
+  const [slug, setSlug] = useState(resource?.slug ?? "");
+  const [slugTouched, setSlugTouched] = useState(Boolean(resource));
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +82,12 @@ export function ResourceFormDialog({ trigger, resource }: ResourceFormDialogProp
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (nextOpen) setState(INITIAL_ACTION_STATE);
+        if (nextOpen) {
+          setState(INITIAL_ACTION_STATE);
+          setNome(resource?.nome ?? "");
+          setSlug(resource?.slug ?? "");
+          setSlugTouched(Boolean(resource));
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -91,7 +114,11 @@ export function ResourceFormDialog({ trigger, resource }: ResourceFormDialogProp
                 name="nome"
                 required
                 maxLength={150}
-                defaultValue={resource?.nome}
+                value={nome}
+                onChange={(e) => {
+                  setNome(e.target.value);
+                  if (!slugTouched) setSlug(slugify(e.target.value));
+                }}
               />
               {state.fieldErrors?.nome ? (
                 <p className="text-xs text-destructive">{state.fieldErrors.nome[0]}</p>
@@ -105,7 +132,11 @@ export function ResourceFormDialog({ trigger, resource }: ResourceFormDialogProp
                 required
                 maxLength={150}
                 placeholder="ex.: osciloscopio"
-                defaultValue={resource?.slug}
+                value={slug}
+                onChange={(e) => {
+                  setSlug(e.target.value);
+                  setSlugTouched(true);
+                }}
               />
               {state.fieldErrors?.slug ? (
                 <p className="text-xs text-destructive">{state.fieldErrors.slug[0]}</p>

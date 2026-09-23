@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  CalendarCheck,
   CalendarDays,
   ClipboardList,
   Home,
-  Settings,
+  LayoutDashboard,
+  Layers,
   UserRound,
+  Users,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,13 +26,21 @@ const NAV_ITEMS = [
 ] as const;
 
 // Visibilidade real controlada por `showAdmin` (calculado a partir do role
-// do profile — ver AppShell). Isso é só conveniência visual: a rota /admin
-// se protege sozinha no servidor (ver app/(app)/admin/page.tsx),
+// do profile — ver AppShell). Isso é só conveniência visual: toda a área
+// /admin/** se protege sozinha no servidor (ver app/(app)/admin/layout.tsx),
 // independentemente do que a sidebar mostra ou esconde.
-const ADMIN_ITEM = { href: "/admin", label: "Admin", icon: Settings } as const;
+const ADMIN_ITEMS = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/recursos", label: "Recursos", icon: Boxes },
+  { href: "/admin/unidades", label: "Unidades", icon: Layers },
+  { href: "/admin/reservas", label: "Reservas", icon: CalendarCheck },
+  { href: "/admin/usuarios", label: "Usuários", icon: Users },
+] as const;
 
 function isItemActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
+  // "/" e "/admin" são raízes exatas — sem isso, "/admin" ficaria marcado
+  // como ativo em qualquer sub-rota (/admin/recursos, /admin/usuarios...).
+  if (href === "/" || href === "/admin") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -89,22 +100,29 @@ export function AppSidebar({
         {showAdmin ? (
           <>
             <Separator className="my-3 bg-sidebar-border" />
-
-            <Link
-              href={ADMIN_ITEM.href}
-              aria-current={
-                isItemActive(pathname, ADMIN_ITEM.href) ? "page" : undefined
-              }
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isItemActive(pathname, ADMIN_ITEM.href)
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <ADMIN_ITEM.icon className="size-4 shrink-0" aria-hidden="true" />
-              {ADMIN_ITEM.label}
-            </Link>
+            <p className="px-3 pb-1 text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
+              Administração
+            </p>
+            {ADMIN_ITEMS.map((item) => {
+              const active = isItemActive(pathname, item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </>
         ) : null}
       </div>

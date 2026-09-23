@@ -261,6 +261,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       cancel_reservation: {
         Args: { p_reservation_id: string }
         Returns: {

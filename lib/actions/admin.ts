@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { countActiveAdmins } from "@/lib/data/admin";
+import { countActiveAdmins, getAdminUserDetail, type AdminUserDetail } from "@/lib/data/admin";
 import { requireAdminProfile } from "@/lib/auth/require-admin";
 import type { ActionState } from "@/lib/actions/action-state";
 import {
+  adminUpdateUserSchema,
   resourceFormSchema,
   unitFormSchema,
   unitStatusSchema,
@@ -292,4 +293,92 @@ export async function demoteUserAction(userId: string): Promise<ActionState> {
 
   revalidatePath("/admin/usuarios");
   return { status: "success", message: "Acesso de administrador removido." };
+}
+
+/**
+ * Detalhe completo de um usuário (com contagem de reservas), buscado só
+ * quando o admin abre o dialog de detalhe — nunca pré-carregado para todas
+ * as linhas da tabela de /admin/usuarios (evitaria N+1 numa lista de 20).
+ */
+export async function fetchAdminUserDetailAction(
+  userId: string,
+): Promise<AdminUserDetail | null> {
+  await requireAdminProfile();
+  return getAdminUserDetail(userId);
+}
+
+export async function adminUpdateUserNameAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdminProfile();
+
+  const parsed = adminUpdateUserSchema.safeParse({
+    userId: formData.get("userId"),
+    nome: formData.get("nome"),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Verifique os campos destacados.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ nome: parsed.data.nome })
+    .eq("id", parsed.data.userId);
+
+  if (error) {
+    return { status: "error", message: "Não foi possível atualizar o nome." };
+  }
+
+  revalidatePath("/admin/usuarios");
+  return { status: "success", message: "Nome atualizado com sucesso." };
+}
+
+/**
+ * Exclusão administrativa de outro usuário — delega toda a regra de negócio
+ * (bloquear autoexclusão por aqui, bloquear excluir o último admin, cancelar
+ * reservas futuras, anonimizar profile, remover credenciais) para a RPC
+ * security definer admin_delete_user, que já valida is_admin() do chamador
+ * internamente (ver migration 20250601090012). Esta action só garante a
+ * mesma guarda no server antes de chamar a RPC (defesa em profundidade) e
+ * traduz o resultado.
+ */
+export async function adminDeleteUserAction(targetUserId: string): Promise<ActionState> {
+  const currentProfile = await requireAdminProfile();
+
+  if (currentProfile.id === targetUserId) {
+    return {
+      status: "error",
+      message: "Use a exclusão de conta no Perfil para excluir a própria conta.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_user", {
+    target_user_id: targetUserId,
+  });
+
+  if (error) {
+    const mensagensConhecidas: Record<string, string> = {
+      "E necessario manter pelo menos um administrador ativo no sistema":
+        "É necessário manter pelo menos um administrador ativo no sistema.",
+      "Usuario nao encontrado": "Usuário não encontrado.",
+      "Usuario ja foi excluido": "Este usuário já foi excluído.",
+    };
+    return {
+      status: "error",
+      message:
+        mensagensConhecidas[error.message] ??
+        "Não foi possível excluir este usuário. Tente novamente.",
+    };
+  }
+
+  revalidatePath("/admin/usuarios");
+  return { status: "success", message: "Usuário excluído com sucesso." };
 }
